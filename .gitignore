@@ -1,0 +1,7 @@
+*.db
+*.db-wal
+*.db-shm
+*.db.zout
+__pycache__/
+node_modules/
+.DS_Store

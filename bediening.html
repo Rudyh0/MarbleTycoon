@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0d1219">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Marble Tycoon · Afstandsbediening</title>
+  <link rel="icon" href="assets/ikoon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/bediening.css">
+  <script type="module" src="js/bediening.js"></script>
+</head>
+<body>
+  <main id="app">
+    <section id="s-aanmelden" class="scherm">
+      <div class="logo"><span class="bol"></span>MARBLE<b>TYCOON</b></div>
+      <h1>Doe mee met de race</h1>
+      <label class="veld" id="codeVeldLabel" hidden>Racecode<input id="code" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD"></label>
+      <label class="veld">Je naam<input id="naam" maxlength="14" autocomplete="nickname" spellcheck="false" placeholder="Bijv. Sanne"></label>
+      <div class="veld">Kies je knikker<div id="skins" class="skins"></div></div>
+      <button id="meedoen" class="groot">Meedoen</button>
+      <p id="aanmeldStatus" class="status"></p>
+    </section>
+
+    <section id="s-lobby" class="scherm" hidden>
+      <div class="ikbol" id="ikBol"></div>
+      <h1 id="welkomNaam">Hoi!</h1>
+      <p class="sub" id="lobbyTekst">Druk op Klaar als je wilt racen.</p>
+      <button id="klaar" class="groot klaar">Klaar</button>
+      <button id="wijzig" class="link">Naam of knikker wijzigen</button>
+      <p class="uitleg">Houd straks je duim op de gashendel: hoe hoger, hoe sneller. Te snel in een bocht en je vliegt eruit. Je telefoon trilt als je de grens nadert.</p>
+    </section>
+
+    <section id="s-race" class="scherm race" hidden>
+      <div class="hud">
+        <div class="plek"><b id="plek">–</b><span id="van">/–</span></div>
+        <div class="ronde" id="ronde">Ronde 1/1</div>
+        <div class="snelheid"><b id="snelheid">0</b><span>km/u</span></div>
+        <div class="gevaarbalk"><div id="gevaar"></div></div>
+        <div class="melding" id="raceMelding"></div>
+      </div>
+      <div class="hendel" id="hendel">
+        <div class="hendelvulling" id="vulling"></div>
+        <div class="hendelknop" id="knop"><span>GAS</span></div>
+        <div class="streepjes"></div>
+      </div>
+    </section>
+
+    <section id="s-uitslag" class="scherm" hidden>
+      <h1 id="uitslagTitel">Finish!</h1>
+      <p class="sub" id="uitslagSub"></p>
+      <ol id="uitslagLijst" class="uitslag"></ol>
+      <p class="sub">Wacht op de volgende race…</p>
+    </section>
+
+    <div id="aftel" class="aftel" hidden></div>
+    <div id="overlay" class="overlay" hidden><div><p id="overlayTekst"></p><button id="overlayKnop" class="groot" hidden>Opnieuw</button></div></div>
+    <div id="flits" class="flits"></div>
+    <label id="tik" class="tik" aria-hidden="true"><input type="checkbox" switch tabindex="-1"></label>
+  </main>
+</body>
+</html>
