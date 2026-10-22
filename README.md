@@ -44,7 +44,7 @@ Gebruik dus een eigen (sub)domein, bijvoorbeeld `marble.rudymedia.nl` naast `bol
 - **Bouwen**: plaats eerst een startpunt en bouw daarna stuk voor stuk verder vanaf een open einde (groene pijl). Zoals in RCT gaat een helling altijd via overgangen: vlak, licht, steil.
 - **Bochten**: klein (1×1), middel (2×2), groot (3×3), 45° naar diagonaal en S-bochten.
 - **Speciale stukken**: looping, kurkentrekker, kleine en grote spiraal, aquariumtunnel en aquariumbocht met vissen, launchtunnel met instelbare snelheid, finish-trechter.
-- **Effecten** op gewone stukken: kettinglift, booster, rem (snelheid instelbaar) en vuur.
+- **Effecten** op gewone stukken: kettinglift, booster, rem (snelheid instelbaar) en vuur. Van de vaart die een booster geeft, vlieg je niet uit de bocht; vaart die je bergaf krijgt, telt wel.
 - **Kleuren** voor de baan en de steunen, per stuk of voor de hele baan.
 - **Thema's**: Metropool, Romeinse tijd, Middeleeuwen, Space, Flora en fauna, Piraten.
 - **Knikkers**: aantal, tussenpauze en meer dan twintig skins.
@@ -62,7 +62,7 @@ Kies **Race** op de pc. Iedereen scant de QR-code, kiest een naam en een knikker
   - *Race*: wie het eerst het aantal rondes rijdt (1, 2, 3 of 5), wint.
   - *Max. keer uit de bocht*: na zoveel keer lig je eruit (of onbeperkt).
   - *Last man standing*: wie het langst op de baan blijft, wint. Elke keer uit de bocht kost een leven en elke ronde wordt de baan gladder.
-  - *Arcade*: ?-dozen op de baan geven een power-up. Een **bananenschil** leg je achter je neer: wie erover rolt, glijdt van de baan. **Boost** geeft even extra vaart. Een **rode schelp** zoekt de knikker vlak voor je op, een **blauwe schelp** vliegt naar de koploper. Achteraan krijg je vaker de sterke items.
+  - *Arcade*: ?-dozen op de baan geven een power-up. Een **bananenschil** leg je achter je neer: wie erover rolt, glijdt van de baan. **Boost** geeft even extra vaart, en daarvan vlieg je niet uit de bocht. Een **rode schelp** zoekt de knikker vlak voor je op, een **blauwe schelp** vliegt naar de koploper. Achteraan krijg je vaker de sterke items.
 
 ### Besturing
 

@@ -87,6 +87,7 @@ class Knikker {
     this.uitgevlogen = 0;
     this.topSnelheid = 0;
     this.vorigeFx = '';
+    this.boostE = 0;   // extra bewegingsenergie van boosters (telt niet mee voor uit de bocht vliegen)
   }
 }
 
@@ -250,7 +251,7 @@ export class Simulatie {
   zetOpBaan(kn, keten, s, v) {
     kn.toestand = 'baan';
     kn.keten = keten; kn.s = s; kn.v = v; kn.i = 0;
-    kn.launch = null; kn.overT = 0; kn.gevaar = 0; kn.vrijT = 0; kn.rust = 0;
+    kn.launch = null; kn.overT = 0; kn.gevaar = 0; kn.vrijT = 0; kn.rust = 0; kn.boostE = 0;
     const k = this.ketens[keten];
     this.zoek(k, kn);
     const p = this.interp(k, kn.i, kn.s, this._p || (this._p = {}));
@@ -268,10 +269,10 @@ export class Simulatie {
     const wrijving = ROLWEERSTAND * G + LUCHTWEERSTAND * v * v + BOCHTWRIJVING * kl * v * v;
     // effecten
     const fx = stuk.fx;
-    let lift = 0;
+    let lift = 0, aBoost = 0, aRem = 0;
     if (fx === 'lift') lift = stuk.v;
-    else if (fx === 'boost') { if (v < stuk.v) a += 16; }
-    else if (fx === 'rem') { if (v > stuk.v) a -= 24 * Math.min(1, (v - stuk.v) / 0.6 + 0.25); }
+    else if (fx === 'boost') { if (v < stuk.v) aBoost += 16; }
+    else if (fx === 'rem') { if (v > stuk.v) aRem = 24 * Math.min(1, (v - stuk.v) / 0.6 + 0.25); }
     else if (fx === 'vuur') kn.hitte = 1;
     if (fx !== kn.vorigeFx) {
       if (fx) this.gebeurtenis(fx === 'launch' ? 'launchIn' : fx, kn, stuk);
@@ -315,8 +316,9 @@ export class Simulatie {
       // meer gas = meer trekkracht en een hogere topsnelheid; boven die snelheid trekt de motor niet meer
       if (gas > 0) a += gas * RACE_ACC * (kn.v >= 0 ? Math.max(0, 1 - kn.v / (RACE_VMAX * gas)) : 1);
       if (kn.speler.rem || kn.spinT > 0) remWrijving = RACE_REM;
-      if (kn.boostT > 0 && kn.v < RACE_VMAX * 1.5) a += BOOST_ACC;
+      if (kn.boostT > 0 && kn.v < RACE_VMAX * 1.5) aBoost += BOOST_ACC;
     }
+    a += aBoost - aRem;
     // Vlakke stukken lopen in een echte knikkerbaan een heel klein beetje af: knikkers blijven niet stilliggen.
     const vlak = Math.abs(p.ty) < 0.012 && !kn.speler && !kn.launch;
     if (vlak && v < 0.32 && fx !== 'rem') a += 0.55 + ROLWEERSTAND * G;
@@ -330,6 +332,20 @@ export class Simulatie {
       if (nv > 0) nv = Math.max(0, nv - w); else if (nv < 0) nv = Math.min(0, nv + w);
     }
     if (lift && nv < lift) nv = lift;
+    // Boostenergie: de extra bewegingsenergie (per kg) die van een booster komt. Die telt niet mee
+    // voor uit de bocht vliegen. Wrijving en remmen halen er naar verhouding iets af; wat er bergaf
+    // bij komt, is gewone vaart en telt wel mee.
+    let be = kn.boostE || 0;
+    if (nv <= 0.05 || v < 0) be = 0;
+    else {
+      if (aBoost > 0) { const dv = aBoost * dt; be += v * dv + dv * dv / 2; }
+      if (be > 0) {
+        const verlies = (wrijving + remWrijving + aRem) * dt;
+        be *= Math.max(0, 1 - (2 * verlies) / Math.max(v, 0.05));
+        be = Math.min(be, nv * nv / 2);
+      }
+    }
+    kn.boostE = be;
     kn.v = nv;
     kn.s += nv * dt;
     const as = Math.abs(nv);
@@ -339,7 +355,8 @@ export class Simulatie {
     // uit de bocht vliegen?
     const magVliegen = (this.uitDeBocht || this.race) && !stuk.buis && stuk.t !== 'start' && stuk.t !== 'finish';
     if (magVliegen) {
-      const v2 = nv * nv;
+      // alleen de "eigen" vaart telt: boostersnelheid laat je niet uit de bocht vliegen
+      const v2 = Math.max(0, nv * nv - 2 * be);
       const fx_ = v2 * p.kx, fy_ = v2 * p.ky + G, fz_ = v2 * p.kz;
       const fu = fx_ * p.ux + fy_ * p.uy + fz_ * p.uz;
       const fr = fx_ * p.rx + fy_ * p.ry + fz_ * p.rz;
@@ -500,7 +517,7 @@ export class Simulatie {
     const v = kn.vel.x * k.T[i * 3] + kn.vel.y * k.T[i * 3 + 1] + kn.vel.z * k.T[i * 3 + 2];
     kn.toestand = 'baan';
     kn.keten = k.k; kn.s = k.S[i]; kn.i = i; kn.v = v * 0.85;
-    kn.overT = 0; kn.vrijT = 0;
+    kn.overT = 0; kn.vrijT = 0; kn.boostE = 0;
     this.gebeurtenis('land', kn);
   }
 

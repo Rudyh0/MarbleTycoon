@@ -9,7 +9,7 @@ export const ITEM_NAAM = {
 
 export const ITEM_UITLEG = {
   banaan: 'Leg hem achter je neer. Wie erover rolt, glijdt van de baan.',
-  boost: 'Even extra vaart. Pas op in de bochten!',
+  boost: 'Even extra vaart. Van die extra vaart vlieg je niet uit de bocht.',
   rood: 'Zoekt de knikker vlak voor je op en tikt hem van de baan.',
   blauw: 'Vliegt naar de koploper. Die gaat eraf.',
 };
