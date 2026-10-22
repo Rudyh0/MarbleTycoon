@@ -530,8 +530,38 @@ export function maakUI(app, acties) {
       ['Beste rondetijd', s.besteRonde < Infinity ? s.besteRonde.toFixed(2) + ' s' : '—'],
     ];
     if (app.sim.uitDeBocht || s.uitgevlogen) regels.push(['Uit de bocht', s.uitgevlogen]);
-    stats.replaceChildren(...regels.map(([a, b]) => el('div', { klasse: 'statregel' }, el('span', { tekst: a }), el('b', { tekst: String(b) }))));
+    const cijfers = beoordeling();
+    const delen = regels.map(([a, b]) => el('div', { klasse: 'statregel' }, el('span', { tekst: a }), el('b', { tekst: String(b) })));
+    if (cijfers) {
+      delen.push(el('div', { klasse: 'statkop', tekst: 'Beoordeling' }));
+      for (const [naam, w] of cijfers) delen.push(el('div', { klasse: 'statregel' }, el('span', { tekst: naam }), el('b', { tekst: `${w.toFixed(2).replace('.', ',')} (${woord(w)})` })));
+    }
+    stats.replaceChildren(...delen);
   };
+
+  // Spanning, intensiteit en misselijkheid, in de geest van RollerCoaster Tycoon
+  function beoordeling() {
+    const keten = app.info && app.info.ketens[0];
+    const pad = app.sim.ketens[0];
+    if (!keten || !keten.start || !pad) return null;
+    let inversies = 0, spiralen = 0, steil = 0, specials = 0, effecten = 0, bochten = 0, daling = 0;
+    for (const st of keten.stukken) {
+      if (st.t === 'looping' || st.t === 'kurk') inversies++;
+      if (st.t.startsWith('spiraal')) spiralen++;
+      if (st.e === -2 || st.s === -2 || st.e === 2 || st.s === 2) steil++;
+      if (['aqua', 'aquaB', 'launch', 'finish'].includes(st.t)) specials++;
+      if (st.fx) effecten++;
+      if (SOORTEN[st.t]?.bocht) bochten++;
+      if (st._uit && st._uit.l < st.l) daling += (st.l - st._uit.l) * NIVEAU;
+    }
+    const vmax = app.sim.stats.topSnelheid * KMU;
+    const lengte = pad.lengte;
+    const spanning = Math.min(10, 0.6 + lengte / 45 + inversies * 0.85 + spiralen * 0.35 + specials * 0.45 + effecten * 0.12 + daling / 10 + vmax / 30);
+    const intensiteit = Math.min(10, vmax / 11 + inversies * 0.7 + steil * 0.25 + spiralen * 0.25);
+    const misselijk = Math.min(10, inversies * 0.65 + spiralen * 0.55 + bochten * 0.05 + vmax / 40);
+    return [['Spanning', spanning], ['Intensiteit', intensiteit], ['Misselijkheid', misselijk]];
+  }
+  const woord = (w) => (w < 2 ? 'laag' : w < 4 ? 'gemiddeld' : w < 6 ? 'hoog' : w < 8 ? 'zeer hoog' : 'extreem');
 
   // ---------------------------------------------------------------- hint onderin
 

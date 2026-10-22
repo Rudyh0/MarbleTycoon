@@ -292,3 +292,4 @@ body[data-modus="bouwen"] #hint { bottom: auto; top: 62px; }
   .detail { grid-template-columns: 1fr; }
   .stalen { grid-template-columns: repeat(8, 26px); }
 }
+.statkop { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--rand); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--zacht); }

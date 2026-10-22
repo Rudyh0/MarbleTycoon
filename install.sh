@@ -32,6 +32,7 @@
 #    --branch NAAM        GitHub-branch (standaard: main)
 #    --ja                 geen vragen stellen, standaardwaarden gebruiken
 #    --verwijder          de game en zijn instellingen weer verwijderen
+#                         (met --ja zonder vragen; de gedeelde banen blijven dan staan)
 # =============================================================================
 
 set -euo pipefail
@@ -109,7 +110,7 @@ while [ $# -gt 0 ]; do
     --branch) BRANCH="${2:-}"; shift ;;
     --ja|--yes|-y) ALLES_JA=1 ;;
     --verwijder|--uninstall) VERWIJDER=1 ;;
-    -h|--help) sed -n '2,36p' "$0" 2>/dev/null || true; exit 0 ;;
+    -h|--help) sed -n '2,37p' "$0" 2>/dev/null || true; exit 0 ;;
     *) fout "Onbekende optie: $1 (zie --help)" ;;
   esac
   shift
@@ -148,7 +149,9 @@ fi
 
 if [ "$VERWIJDER" = 1 ]; then
   stap "Marble Tycoon verwijderen"
-  ja_nee "Weet je het zeker? De website en de instellingen worden verwijderd" "n" || { info "Niets gedaan."; exit 0; }
+  if [ "$ALLES_JA" = 0 ]; then
+    ja_nee "Weet je het zeker? De website en de instellingen worden verwijderd" "n" || { info "Niets gedaan."; exit 0; }
+  fi
   for unit in "$NAAM-update.timer" "$NAAM-backup.timer" "$NAAM-server.service"; do
     systemctl disable --now "$unit" >/dev/null 2>&1 || true
   done
@@ -628,7 +631,7 @@ else
     ok "Game draait nu via HTTP; certificaat aanvragen..."
   fi
 fi
-if ! grep -rqs "default_server" /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ 2>/dev/null; then
+if ! grep -Rqs "default_server" /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ 2>/dev/null; then
   info "Er is geen vangnet in nginx; via het kale IP-adres zie je Ubuntu's standaardpagina (niet erg)."
 fi
 
