@@ -29,22 +29,29 @@
       <p class="sub" id="lobbyTekst">Druk op Klaar als je wilt racen.</p>
       <button id="klaar" class="groot klaar">Klaar</button>
       <button id="wijzig" class="link">Naam of knikker wijzigen</button>
-      <p class="uitleg">Houd straks je duim op de gashendel: hoe hoger, hoe sneller. Te snel in een bocht en je vliegt eruit. Je telefoon trilt als je de grens nadert.</p>
+      <p class="uitleg">Gas geef je met de hendel rechts, remmen met de rode knop. Bergop heb je genoeg gas nodig, anders rol je terug. Te snel in een bocht en je vliegt eruit; je telefoon trilt als je de grens nadert.</p>
+      <p class="uitleg" id="regelTekst"></p>
     </section>
 
     <section id="s-race" class="scherm race" hidden>
-      <div class="hud">
-        <div class="plek"><b id="plek">–</b><span id="van">/–</span></div>
-        <div class="ronde" id="ronde">Ronde 1/1</div>
-        <div class="snelheid"><b id="snelheid">0</b><span>km/u</span></div>
-        <div class="gevaarbalk"><div id="gevaar"></div></div>
-        <div class="melding" id="raceMelding"></div>
+      <div class="links">
+        <div class="hud">
+          <div class="plek"><b id="plek">–</b><span id="van">/–</span></div>
+          <div class="ronde" id="ronde">Ronde 1/1</div>
+          <div class="levens" id="levens"></div>
+          <div class="snelheid"><b id="snelheid">0</b><span>km/u</span><i id="achteruit" hidden>achteruit</i></div>
+          <div class="gevaarbalk"><div id="gevaar"></div></div>
+          <div class="melding" id="raceMelding"></div>
+        </div>
+        <button id="itemKnop" class="itemknop leeg" type="button" hidden><span id="itemIcoon"></span><small id="itemNaam">Geen item</small></button>
+        <button id="remKnop" class="remknop" type="button">REM</button>
       </div>
       <div class="hendel" id="hendel">
         <div class="hendelvulling" id="vulling"></div>
         <div class="hendelknop" id="knop"><span>GAS</span></div>
         <div class="streepjes"></div>
       </div>
+      <div id="weg" class="wegvak" hidden><div><b>Uitgeschakeld</b><p id="wegTekst">Je kijkt mee op het grote scherm.</p></div></div>
     </section>
 
     <section id="s-uitslag" class="scherm" hidden>

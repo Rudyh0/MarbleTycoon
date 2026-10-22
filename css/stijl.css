@@ -206,7 +206,7 @@ body[data-modus="bouwen"] #hint { bottom: auto; top: 62px; }
 /* ------------------------------------------------ race */
 #race { position: absolute; inset: 0; pointer-events: none !important; }
 #race > * { pointer-events: auto; }
-.racelobby { position: absolute; right: 10px; top: 66px; width: min(620px, calc(100% - 20px)); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.racelobby { position: absolute; right: 10px; top: 66px; width: min(640px, calc(100% - 20px)); max-height: calc(100% - 76px); overflow: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 .lobbykop { display: flex; align-items: center; gap: 10px; }
 .lobbykop h2 { margin: 0; font-size: 20px; }
 .lobbykop .icoon { width: 26px; height: 26px; color: var(--accent); }
@@ -219,7 +219,7 @@ body[data-modus="bouwen"] #hint { bottom: auto; top: 62px; }
 .kamerlink { font-size: 11px; color: var(--zacht); max-width: 210px; text-align: center; word-break: break-all; }
 .lobbyrechts { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .lobbyrechts h3 { margin: 4px 0 0; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--zacht); }
-.spelerlijst { display: flex; flex-direction: column; gap: 5px; max-height: 230px; overflow: auto; }
+.spelerlijst { display: flex; flex-direction: column; gap: 5px; max-height: 190px; overflow: auto; }
 .speler { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 8px; background: rgba(255,255,255,.04); }
 .speler.weg { opacity: .5; }
 .skinbol { width: 26px; height: 26px; }
@@ -293,3 +293,40 @@ body[data-modus="bouwen"] #hint { bottom: auto; top: 62px; }
   .stalen { grid-template-columns: repeat(8, 26px); }
 }
 .statkop { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--rand); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--zacht); }
+
+/* ------------------------------------------------ race: regels en splitscreen */
+.regels { display: flex; flex-direction: column; gap: 7px; margin-top: 4px; }
+.regels h3 { margin: 4px 0 0; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--zacht); }
+.regelrij { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.regelnaam { min-width: 150px; color: var(--zacht); }
+.regeluitleg { max-width: none; }
+.splitscreen { position: absolute; inset: 0; pointer-events: none !important; }
+.cel { position: absolute; box-shadow: inset 0 0 0 2px rgba(13, 18, 25, .9), inset 0 0 0 3px color-mix(in srgb, var(--kleur) 55%, transparent); overflow: hidden; }
+.cel.gevaar { animation: celgevaar .35s ease-in-out infinite alternate; }
+@keyframes celgevaar {
+  from { box-shadow: inset 0 0 0 4px rgba(255, 50, 40, .95), inset 0 0 50px rgba(255, 40, 30, .55); }
+  to { box-shadow: inset 0 0 0 2px rgba(255, 50, 40, .35), inset 0 0 10px rgba(255, 40, 30, .15); }
+}
+.celkop { position: absolute; left: 8px; bottom: 8px; right: 8px; display: flex; align-items: center; gap: 8px; padding: 5px 10px 5px 5px; border-radius: 999px; background: rgba(12, 18, 27, .82); border: 2px solid var(--kleur); width: max-content; max-width: calc(100% - 16px); font-size: 13px; }
+.celplek { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; border-radius: 50%; background: var(--kleur); color: #0d1219; font-size: 15px; }
+.celnaam { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+.celinfo { color: var(--zacht); white-space: nowrap; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; }
+.celitem { display: inline-flex; width: 30px; height: 30px; flex: none; }
+.celitem:empty { display: none; }
+.celitem svg { width: 100%; height: 100%; }
+.celitem .rolt { display: inline-flex; width: 30px; height: 30px; align-items: center; justify-content: center; border-radius: 8px; font-weight: 900; color: #fff; background: linear-gradient(135deg, #ff5d5d, #f8d84a, #7ed957, #3ccfe0, #6d5bd0); animation: rolt .25s linear infinite; }
+@keyframes rolt { 50% { filter: hue-rotate(180deg); transform: scale(1.1); } }
+.celmelding { position: absolute; left: 0; right: 0; top: 38%; text-align: center; font-size: clamp(18px, 4vmin, 44px); font-weight: 900; color: #fff; text-shadow: 0 4px 18px rgba(0,0,0,.7); pointer-events: none; }
+.celmelding.rood { color: #ff8a7a; }
+.celmelding.groen { color: #b6f59a; }
+.celmelding.pop { animation: celpop 1.6s ease-out forwards; }
+@keyframes celpop { from { transform: scale(1.5); opacity: 0; } 12% { transform: scale(1); opacity: 1; } 75% { opacity: 1; } to { opacity: 0; } }
+.celsluier { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(8, 12, 18, .55); color: #fff; font-weight: 800; font-size: clamp(14px, 2.4vmin, 24px); text-align: center; padding: 20px; }
+.overzichtcel { --kleur: #8fa0b6; }
+.ministand { position: absolute; top: 8px; left: 8px; display: flex; flex-direction: column; gap: 3px; }
+.ministandregel { padding: 2px 8px; border-left: 4px solid var(--kleur); background: rgba(12,18,27,.8); border-radius: 4px; font-size: 12px; font-weight: 700; }
+.ministandregel.weg { opacity: .45; text-decoration: line-through; }
+.standregel.weg { opacity: .5; }
+.racemelding { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); font-size: clamp(22px, 5vmin, 52px); font-weight: 900; text-shadow: 0 6px 30px rgba(0,0,0,.75); pointer-events: none !important; white-space: nowrap; color: #fff; }
+.racemelding.pop { animation: celpop 2.2s ease-out forwards; }
+body[data-modus="race"] #topbalk { opacity: .92; }

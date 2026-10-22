@@ -40,8 +40,23 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .ikbol { width: 90px; height: 90px; border-radius: 50%; box-shadow: inset -10px -14px 22px rgba(0,0,0,.4), 0 0 0 4px var(--mijn), 0 10px 30px rgba(0,0,0,.5); }
 
 /* race */
-.race { justify-content: stretch; align-items: stretch; flex-direction: row; padding: 16px; gap: 16px; }
-.hud { flex: 1; display: flex; flex-direction: column; justify-content: space-between; text-align: left; padding: 8px 0; min-width: 0; }
+.race { justify-content: stretch; align-items: stretch; flex-direction: row; padding: 16px; gap: 14px; }
+.links { flex: 1; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.hud { flex: 1; display: flex; flex-direction: column; justify-content: space-between; text-align: left; padding: 4px 0; min-width: 0; }
+.levens { font-size: 22px; color: #ff6f6f; letter-spacing: 2px; min-height: 1.2em; }
+.snelheid i { display: block; font-style: normal; color: var(--warm, #ffb347); font-weight: 700; font-size: 14px; }
+.itemknop { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 18px; border: 2px solid rgba(255,255,255,.18); background: linear-gradient(#26344a, #1a2433); color: #fff; font-weight: 800; text-align: left; min-height: 76px; }
+.itemknop span { width: 54px; height: 54px; flex: none; display: inline-flex; }
+.itemknop span svg { width: 100%; height: 100%; }
+.itemknop small { font-size: 15px; line-height: 1.15; }
+.itemknop.vol { border-color: #ffd23a; box-shadow: 0 0 0 3px rgba(255, 210, 58, .25), 0 8px 22px rgba(0,0,0,.4); }
+.itemknop.leeg span { border: 2px dashed rgba(255,255,255,.2); border-radius: 12px; }
+.itemknop.rolt span { animation: rolt .18s linear infinite; }
+@keyframes rolt { 50% { transform: scale(1.12) rotate(8deg); } }
+.remknop { min-height: 96px; border-radius: 22px; border: 0; background: linear-gradient(#ff7b6b, #d8392a); color: #fff; font-size: 26px; font-weight: 900; letter-spacing: .12em; touch-action: none; box-shadow: 0 6px 18px rgba(216, 57, 42, .35); }
+.remknop.vast { background: linear-gradient(#ffb0a6, #ff5d4a); transform: scale(.97); }
+.wegvak { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; background: rgba(8, 12, 18, .78); z-index: 3; }
+.wegvak b { font-size: 34px; color: #ff8a7a; }
 .plek b { font-size: 64px; line-height: 1; font-weight: 800; }
 .plek span { font-size: 28px; color: var(--zacht); }
 .ronde { color: var(--zacht); font-size: 18px; }

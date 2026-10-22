@@ -768,10 +768,10 @@ export function zetModus(modus) {
   herbereken();
 }
 
-function raceStart(spelers, rondes) {
+function raceStart(spelers, regels) {
   sim.bouw(app.info, magazijnPositie(app.baan.start));
   ruimKnikkersOp();
-  sim.startRace(spelers, rondes);
+  sim.startRace(spelers, regels);
 }
 
 export function herstartSpel() {
@@ -843,7 +843,7 @@ function lus(nu) {
     if ((rolTeller += dt) > 0.25) { rolTeller = 0; ui?.werkStatsBij(); }
   } else rolGeluid(0, 0);
   if (app.modus === 'race') race?.frame(dt);
-  wereld.render();
+  if (!(app.modus === 'race' && race && race.render())) wereld.render();
 }
 
 // ------------------------------------------------------------------ opstarten

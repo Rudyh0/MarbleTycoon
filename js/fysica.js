@@ -8,9 +8,11 @@ import { KNIKKER_R, ZWAARTEKRACHT as G, ROL_FACTOR, ROLWEERSTAND, LUCHTWEERSTAND
 import { SOORTEN, stukPad } from './stukken.js';
 
 const DT = 1 / 240;
-export const RACE_VMAX = 12.5;      // m/s bij vol gas
-const RACE_ACC = 7.5;
-const RACE_REM = 9.5;
+export const RACE_VMAX = 12.5;      // m/s: daarboven trekt de motor niet meer (bergaf kan het harder)
+const RACE_ACC = 8;                  // m/s² motorkracht bij vol gas en stilstand
+const RACE_REM = 11;                 // m/s² remkracht
+const BOOST_ACC = 15;
+export const ITEMS = ['banaan', 'boost', 'rood', 'blauw'];
 const GRIP = 1.0;                   // hoeveel zijwaartse kracht de goot aankan (t.o.v. de druk op de bodem)
 
 // ------------------------------------------------------------------ ketens als één lang pad
@@ -235,6 +237,7 @@ export class Simulatie {
       kn.hitte = Math.max(0, kn.hitte - dt * 0.35);
     }
     if (!race) this.botsingen();
+    else if (race.fase === 'race') this.raceExtra(dt);
   }
 
   startVrij() {
@@ -304,21 +307,26 @@ export class Simulatie {
         if (kn.v < stuk.v) a += acc;
       }
     } else if (kn.launch) kn.launch = null;
-    // racebesturing
+    // racebesturing: het gas is een motor, geen snelheidsbegrenzer. Zwaartekracht blijft gewoon werken,
+    // dus met te weinig gas rol je een helling weer af.
+    let remWrijving = 0;
     if (kn.speler && this.race) {
-      const doel = Math.min(1, Math.max(0, kn.speler.gas)) * RACE_VMAX;
-      if (kn.v < doel) a += RACE_ACC * (1 - 0.45 * kn.v / RACE_VMAX);
-      else if (kn.v > doel + 0.15) a -= RACE_REM * Math.min(1, (kn.v - doel) / 1.6 + 0.15);
+      const gas = kn.spinT > 0 ? 0 : Math.min(1, Math.max(0, kn.speler.gas || 0));
+      // meer gas = meer trekkracht en een hogere topsnelheid; boven die snelheid trekt de motor niet meer
+      if (gas > 0) a += gas * RACE_ACC * (kn.v >= 0 ? Math.max(0, 1 - kn.v / (RACE_VMAX * gas)) : 1);
+      if (kn.speler.rem || kn.spinT > 0) remWrijving = RACE_REM;
+      if (kn.boostT > 0 && kn.v < RACE_VMAX * 1.5) a += BOOST_ACC;
     }
     // Vlakke stukken lopen in een echte knikkerbaan een heel klein beetje af: knikkers blijven niet stilliggen.
     const vlak = Math.abs(p.ty) < 0.012 && !kn.speler && !kn.launch;
     if (vlak && v < 0.32 && fx !== 'rem') a += 0.55 + ROLWEERSTAND * G;
     // wrijving tegen de bewegingsrichting
     let nv;
-    if (Math.abs(v) < 0.03 && Math.abs(a) <= ROLWEERSTAND * G * 1.05 && !lift) nv = 0;
+    kn.sVorig = kn.s;
+    if (Math.abs(v) < 0.03 && Math.abs(a) <= ROLWEERSTAND * G * 1.05 + remWrijving && !lift) nv = 0;
     else {
       nv = v + a * dt;
-      const w = wrijving * dt;
+      const w = (wrijving + remWrijving) * dt;
       if (nv > 0) nv = Math.max(0, nv - w); else if (nv < 0) nv = Math.min(0, nv + w);
     }
     if (lift && nv < lift) nv = lift;
@@ -336,7 +344,8 @@ export class Simulatie {
       const fu = fx_ * p.ux + fy_ * p.uy + fz_ * p.uz;
       const fr = fx_ * p.rx + fy_ * p.ry + fz_ * p.rz;
       // zijwaarts: de goot houdt de knikker zolang de zijkracht kleiner is dan de druk op de bodem
-      let gevaar = Math.abs(fr) / (GRIP * Math.max(fu, 0.35 * G));
+      const grip = GRIP * (this.race ? this.race.grip : 1);
+      let gevaar = Math.abs(fr) / (grip * Math.max(fu, 0.35 * G));
       // over een bult: pas los als de baan hem harder omlaag zou moeten trekken dan een beetje
       if (fu < 0.3 * G) gevaar = Math.max(gevaar, 0.75 + 0.25 * (0.3 * G - fu) / (1.1 * G));
       kn.gevaar = kn.gevaar * 0.85 + Math.min(1.5, gevaar) * 0.15;
@@ -408,7 +417,17 @@ export class Simulatie {
     kn.vrijT = 0; kn.rust = 0; kn.uitgevlogen++;
     kn.verlatenKeten = kn.keten; kn.verlatenS = kn.s;
     this.stats.uitgevlogen++;
+    kn.launch = null;
     this.gebeurtenis('eruit', kn);
+    const r = this.race;
+    if (r && r.fase === 'race' && r.maxUit > 0 && kn.uitgevlogen >= r.maxUit && !kn.uitgeschakeld && !kn.gefinisht) {
+      kn.uitgeschakeld = true;
+      kn.uitTijd = this.tijd;
+      kn.uitVoortgang = this.voortgang(kn);
+      kn.item = null; kn.itemRol = 0;
+      this.gebeurtenis('uitgeschakeld', kn);
+      this.controleerEinde();
+    }
   }
 
   wordVrij(kn, richting) {
@@ -446,7 +465,10 @@ export class Simulatie {
       kn.draai.premultiply(q);
     }
     if (this.race) {
-      if (kn.vrijT > 1.3) this.raceTerug(kn);
+      if (kn.vrijT > 1.3) {
+        if (kn.uitgeschakeld) kn.toestand = 'uit';
+        else this.raceTerug(kn);
+      }
       return;
     }
     // landen op een stuk baan
@@ -545,8 +567,17 @@ export class Simulatie {
 
   // ---------------------------------------------------------------- race
 
-  startRace(spelers, rondes) {
-    this.race = { fase: 'aftellen', rondes, start: 0, uitslag: [], aftelT: 3.99, aftelEind: performance.now() + 3990 };
+  // opties: { rondes, modus: 'race' | 'lms', maxUit (0 = onbeperkt), arcade }
+  startRace(spelers, opties) {
+    const o = typeof opties === 'number' ? { rondes: opties } : (opties || {});
+    const modus = o.modus === 'lms' ? 'lms' : 'race';
+    this.race = {
+      fase: 'aftellen', modus, rondes: modus === 'lms' ? Infinity : Math.max(1, o.rondes || 1),
+      maxUit: modus === 'lms' ? Math.max(1, o.maxUit || 1) : Math.max(0, o.maxUit || 0),
+      arcade: !!o.arcade, grip: 1, gladStap: 0,
+      start: 0, uitslag: [], aftelT: 3.99, aftelEind: performance.now() + 3990,
+      dozen: [], bananen: [], schelpen: [], explosies: [],
+    };
     this.knikkers = [];
     this.wachtrij = [];
     const n = spelers.length;
@@ -554,12 +585,31 @@ export class Simulatie {
       const kn = new Knikker(sp.skin);
       kn.speler = sp;
       kn.zijOffset = n > 1 ? ((i / (n - 1)) - 0.5) * 0.12 : 0;
+      kn.item = null; kn.itemRol = 0; kn.boostT = 0; kn.spinT = 0;
+      kn.uitgeschakeld = false; kn.winnaar = false;
       this.knikkers.push(kn);
       this.zetOpBaan(kn, 0, 0.32, 0);
       kn.ronde = 0;
     });
+    if (this.race.arcade) this.plaatsDozen();
     this.actief = true;
     this.tijd = 0;
+  }
+
+  plaatsDozen() {
+    const k = this.ketens[0];
+    if (!k) return;
+    const r = this.race;
+    let volgende = Math.min(9, k.lengte * 0.25);
+    for (const info of k.info) {
+      if (info.s1 < volgende) continue;
+      const geschikt = !info.buis && info.t !== 'start' && info.t !== 'finish' && info.fx !== 'lift' && info.fx !== 'launch';
+      if (!geschikt) continue;
+      const s = Math.max(volgende, info.s0 + (info.s1 - info.s0) * 0.5);
+      if (s > k.lengte - 2) break;
+      r.dozen.push({ s, actief: true, terugT: 0, id: r.dozen.length });
+      volgende = s + 18;
+    }
   }
 
   raceTik(dt) {
@@ -580,45 +630,242 @@ export class Simulatie {
     }
   }
 
+  voortgang(kn) {
+    const L = this.ketens[0] ? this.ketens[0].lengte : 1;
+    return kn.ronde * L + (kn.toestand === 'vrij' ? kn.vliegS || 0 : kn.s);
+  }
+
+  // Alles wat per stapje in de race gebeurt: timers, itemdozen, bananen, schelpen.
+  raceExtra(dt) {
+    const r = this.race;
+    for (const kn of this.knikkers) {
+      if (kn.boostT > 0) kn.boostT -= dt;
+      if (kn.spinT > 0) kn.spinT -= dt;
+      if (kn.itemRol > 0) {
+        kn.itemRol -= dt;
+        if (kn.itemRol <= 0) { kn.itemRol = 0; this.gebeurtenis('itemKlaar', kn, kn.item); }
+      }
+    }
+    if (!r.arcade) return;
+    for (const d of r.dozen) if (!d.actief && (d.terugT -= dt) <= 0) d.actief = true;
+    for (const kn of this.knikkers) {
+      if (kn.toestand !== 'baan' || kn.keten !== 0 || kn.uitgeschakeld || kn.gefinisht) continue;
+      const a = Math.min(kn.sVorig ?? kn.s, kn.s), b = Math.max(kn.sVorig ?? kn.s, kn.s);
+      if (b - a > 3) continue;
+      for (const d of r.dozen) {
+        if (!d.actief || d.s < a - 0.05 || d.s > b + 0.05) continue;
+        d.actief = false; d.terugT = 3.5;
+        if (!kn.item && !kn.itemRol) {
+          kn.item = this.kiesItem(kn);
+          kn.itemRol = 1.3;
+          this.gebeurtenis('itemRol', kn, kn.item);
+        } else this.gebeurtenis('doos', kn);
+      }
+      for (let j = r.bananen.length - 1; j >= 0; j--) {
+        const ban = r.bananen[j];
+        if (ban.s < a - 0.12 || ban.s > b + 0.12) continue;
+        if (ban.eigenaar === kn && this.tijd - ban.tijd < 0.6) continue;
+        r.bananen.splice(j, 1);
+        this.raakEruit(kn, 'banaan');
+      }
+    }
+    this.beweegSchelpen(dt);
+    for (const e of r.explosies) e.t += dt;
+    r.explosies = r.explosies.filter((e) => e.t < 0.8);
+  }
+
+  kiesItem(kn) {
+    const actief = this.stand().filter((k) => !k.uitgeschakeld && !k.gefinisht);
+    const n = actief.length;
+    const plek = Math.max(0, actief.indexOf(kn));
+    const f = n > 1 ? plek / (n - 1) : 0;
+    const blauwBezig = this.race.schelpen.some((s) => s.soort === 'blauw');
+    const gewichten = {
+      banaan: 4 * (1 - f) + 0.6,
+      boost: 2 + 2.5 * f,
+      rood: n > 1 ? 0.6 + 3 * f : 0.8,
+      blauw: n >= 3 && f > 0.45 && !blauwBezig ? 1.4 * f : 0,
+    };
+    let som = 0;
+    for (const w of Object.values(gewichten)) som += w;
+    let x = Math.random() * som;
+    for (const [item, w] of Object.entries(gewichten)) { x -= w; if (x <= 0) return item; }
+    return 'boost';
+  }
+
+  // De speler drukt op "Gebruik"
+  gebruikItem(kn) {
+    const r = this.race;
+    if (!r || r.fase !== 'race' || !kn.item || kn.itemRol > 0 || kn.uitgeschakeld || kn.gefinisht) return false;
+    const item = kn.item;
+    kn.item = null;
+    const k = this.ketens[0];
+    if (item === 'boost') {
+      kn.boostT = 1.6;
+    } else if (item === 'banaan') {
+      let s = kn.toestand === 'vrij' ? (kn.vliegS || 0) - 0.6 : kn.s - 0.55;
+      if (s < 0.6) s = Math.min(k.lengte - 0.5, kn.s + 1.2);
+      r.bananen.push({ s, eigenaar: kn, tijd: this.tijd });
+    } else if (item === 'rood') {
+      const mijn = this.voortgang(kn);
+      let doel = null, beste = Infinity;
+      for (const o of this.knikkers) {
+        if (o === kn || o.uitgeschakeld || o.gefinisht) continue;
+        const d = this.voortgang(o) - mijn;
+        if (d > 0 && d < beste) { beste = d; doel = o; }
+      }
+      r.schelpen.push({ soort: 'rood', eigenaar: kn, doel, voortgang: mijn + 0.4, v: Math.max(13, Math.abs(kn.v) + 7), t: 0 });
+    } else if (item === 'blauw') {
+      const pos = kn.pos.clone();
+      r.schelpen.push({ soort: 'blauw', eigenaar: kn, doel: null, van: pos, pos: pos.clone(), t: 0, duur: 2.4 });
+    }
+    this.gebeurtenis('itemGebruikt', kn, item);
+    return true;
+  }
+
+  leider() {
+    return this.stand().find((k) => !k.uitgeschakeld && !k.gefinisht) || null;
+  }
+
+  // positie op de hoofdbaan bij een totale voortgang (ronden meegerekend)
+  puntOpBaan(voortgang, uit) {
+    const k = this.ketens[0];
+    const s = ((voortgang % k.lengte) + k.lengte) % k.lengte;
+    const tmp = this._pb || (this._pb = { i: 0, s: 0 });
+    tmp.s = s;
+    const i = this.zoek(k, tmp);
+    return this.interp(k, i, s, uit || (this._pbu = this._pbu || {}));
+  }
+
+  beweegSchelpen(dt) {
+    const r = this.race;
+    const k = this.ketens[0];
+    for (let j = r.schelpen.length - 1; j >= 0; j--) {
+      const sc = r.schelpen[j];
+      sc.t += dt;
+      if (sc.soort === 'rood') {
+        const doel = sc.doel;
+        if (doel && (doel.uitgeschakeld || doel.gefinisht)) sc.doel = null;
+        if (sc.doel) sc.v = Math.max(sc.v, Math.abs(sc.doel.v) + 6);
+        sc.voortgang += sc.v * dt;
+        const p = this.puntOpBaan(sc.voortgang);
+        sc.pos = sc.pos || new THREE.Vector3();
+        sc.pos.set(p.px + p.ux * 0.02, p.py + p.uy * 0.02, p.pz + p.uz * 0.02);
+        if (sc.doel && this.voortgang(sc.doel) - sc.voortgang < 0.25) {
+          if (sc.doel.toestand === 'baan') this.raakEruit(sc.doel, 'rood');
+          r.explosies.push({ pos: sc.pos.clone(), t: 0, kleur: 0xff4030 });
+          r.schelpen.splice(j, 1);
+          continue;
+        }
+        // tegen een banaan op de baan
+        const sNu = ((sc.voortgang % k.lengte) + k.lengte) % k.lengte;
+        const bi = r.bananen.findIndex((b) => Math.abs(b.s - sNu) < 0.25);
+        if (bi >= 0) { r.bananen.splice(bi, 1); r.explosies.push({ pos: sc.pos.clone(), t: 0, kleur: 0xffd23a }); r.schelpen.splice(j, 1); continue; }
+        if (sc.t > 9) r.schelpen.splice(j, 1);
+      } else {
+        // blauwe schelp: vliegt in een boog naar de leider, ontwijken kan niet
+        const leider = this.leider();
+        if (!leider) { r.schelpen.splice(j, 1); continue; }
+        sc.doel = leider;
+        const f = Math.min(1, sc.t / sc.duur);
+        const doelPos = leider.pos;
+        sc.pos.lerpVectors(sc.van, doelPos, f * f * (3 - 2 * f));
+        sc.pos.y += Math.sin(f * Math.PI) * 7 + 0.5 * f;
+        if (f >= 1) {
+          if (leider.toestand === 'baan') this.raakEruit(leider, 'blauw');
+          r.explosies.push({ pos: leider.pos.clone(), t: 0, kleur: 0x3f8cff, groot: true });
+          r.schelpen.splice(j, 1);
+        }
+      }
+    }
+  }
+
+  // Geraakt door een banaan of schelp: van de baan, of in een buis een spin.
+  raakEruit(kn, oorzaak) {
+    if (kn.toestand !== 'baan' || kn.uitgeschakeld || kn.gefinisht) return;
+    const k = this.ketens[kn.keten];
+    const g = this._rg || (this._rg = {});
+    const i = this.zoek(k, kn);
+    const p = this.interp(k, i, kn.s, g);
+    this.gebeurtenis('geraakt', kn, oorzaak);
+    if (p.stuk.buis || p.stuk.t === 'start' || kn.launch) {
+      kn.v *= 0.1;
+      kn.spinT = 1.2;
+      return;
+    }
+    kn.vel.set(p.tx * kn.v, p.ty * kn.v, p.tz * kn.v);
+    this.vliegEruit(kn, k, g, Math.random() > 0.5 ? 1 : -1);
+  }
+
   raceRonde(kn) {
     const r = this.race;
     const rondeTijd = this.tijd - kn.rondeStart;
     kn.besteRonde = Math.min(kn.besteRonde, rondeTijd);
     kn.ronde++;
-    if (kn.ronde >= r.rondes && !kn.gefinisht) {
+    if (r.modus === 'race' && kn.ronde >= r.rondes && !kn.gefinisht) {
       kn.gefinisht = true;
       kn.finishTijd = this.tijd - r.start;
       r.uitslag.push(kn);
       kn.toestand = 'binnen';
       kn.binnenT = 0;
+      kn.item = null;
       this.gebeurtenis('raceFinish', kn, r.uitslag.length);
-      if (r.uitslag.length === this.knikkers.length) { r.fase = 'klaar'; this.gebeurtenis('raceKlaar'); }
+      this.controleerEinde();
       return;
+    }
+    if (r.modus === 'lms') {
+      // elke ronde van de koploper wordt de baan een beetje gladder
+      const meeste = Math.max(...this.knikkers.filter((k) => !k.uitgeschakeld).map((k) => k.ronde));
+      const grip = Math.max(0.6, 1 - 0.07 * meeste);
+      if (grip < r.grip - 1e-6) { r.grip = grip; r.gladStap++; this.gebeurtenis('gladder', null, grip); }
     }
     this.gebeurtenis('ronde', kn, rondeTijd);
     kn.rondeStart = this.tijd;
-    this.zetOpBaan(kn, 0, 0.32, 0);
+    this.zetOpBaan(kn, 0, 0.32, Math.max(0, kn.v * 0.3));
+  }
+
+  controleerEinde() {
+    const r = this.race;
+    if (!r || r.fase === 'klaar') return;
+    const n = this.knikkers.length;
+    const levend = this.knikkers.filter((k) => !k.uitgeschakeld);
+    let klaar = false;
+    if (r.modus === 'race') klaar = this.knikkers.every((k) => k.gefinisht || k.uitgeschakeld);
+    else {
+      klaar = (n >= 2 && levend.length <= 1) || (n === 1 && levend.length === 0);
+      if (klaar && levend.length === 1) { levend[0].winnaar = true; this.gebeurtenis('winnaar', levend[0]); }
+    }
+    if (klaar) {
+      r.fase = 'klaar';
+      r.eindTijd = this.tijd - r.start;
+      this.gebeurtenis('raceKlaar');
+    }
   }
 
   raceTerug(kn) {
     const k = this.ketens[0];
     let s = Math.max(0.32, (kn.vliegS || 0) - 1.6);
     if (s > k.lengte - 0.2) s = k.lengte - 0.2;
+    // niet midden in een launchtunnel terugzetten
+    const info = k.info.find((x) => s >= x.s0 && s < x.s1);
+    if (info && info.fx === 'launch') s = Math.max(0.32, info.s0 - 0.4);
     this.zetOpBaan(kn, 0, s, 0);
     this.gebeurtenis('terug', kn);
   }
 
-  // klassement: verste eerst
+  // klassement: beste eerst
   stand() {
-    const L = this.ketens[0] ? this.ketens[0].lengte : 1;
+    const r = this.race;
     return [...this.knikkers].sort((a, b) => {
       if (a.gefinisht || b.gefinisht) {
         if (a.gefinisht && b.gefinisht) return a.finishTijd - b.finishTijd;
         return a.gefinisht ? -1 : 1;
       }
-      const pa = a.ronde * L + (a.toestand === 'vrij' ? a.vliegS : a.s);
-      const pb = b.ronde * L + (b.toestand === 'vrij' ? b.vliegS : b.s);
-      return pb - pa;
+      if (a.uitgeschakeld || b.uitgeschakeld) {
+        if (a.uitgeschakeld && b.uitgeschakeld) return r && r.modus === 'lms' ? b.uitTijd - a.uitTijd : b.uitVoortgang - a.uitVoortgang;
+        return a.uitgeschakeld ? 1 : -1;
+      }
+      return this.voortgang(b) - this.voortgang(a);
     });
   }
 

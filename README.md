@@ -53,7 +53,16 @@ Gebruik dus een eigen (sub)domein, bijvoorbeeld `marble.rudymedia.nl` naast `bol
 
 ### Race (multiplayer)
 
-Kies **Race** op de pc. Iedereen scant de QR-code, kiest een naam en een knikker en drukt op **Klaar**. Met de gashendel op je telefoon bepaal je de snelheid. Ga je te snel door een bocht of over een bult, dan vlieg je eruit en word je teruggezet. Je telefoon trilt als je de grens nadert. Op iPhones kan een website niet trillen; daar knippert het scherm.
+Kies **Race** op de pc. Iedereen scant de QR-code, kiest een naam en een knikker en drukt op **Klaar**.
+
+- **Besturing op de telefoon:** gashendel rechts, rode remknop links. Het gas is een motor: bergop heb je genoeg gas nodig, anders rol je terug. Bergaf gaat het vanzelf harder, dus op tijd remmen.
+- **Uit de bocht:** te snel door een bocht of over een bult en je vliegt eruit; je wordt even later teruggezet. Je telefoon trilt en je schermpje knippert rood als je de grens nadert. Op iPhones kan een website niet trillen; daar knippert het scherm.
+- **Splitscreen:** op het grote scherm krijgt iedereen een eigen beeld met een camera die zijn knikker volgt. Namen staan boven de knikkers. Je kunt ook kiezen voor één groot beeld.
+- **Spelregels:**
+  - *Race*: wie het eerst het aantal rondes rijdt (1, 2, 3 of 5), wint.
+  - *Max. keer uit de bocht*: na zoveel keer lig je eruit (of onbeperkt).
+  - *Last man standing*: wie het langst op de baan blijft, wint. Elke keer uit de bocht kost een leven en elke ronde wordt de baan gladder.
+  - *Arcade*: ?-dozen op de baan geven een power-up. Een **bananenschil** leg je achter je neer: wie erover rolt, glijdt van de baan. **Boost** geeft even extra vaart. Een **rode schelp** zoekt de knikker vlak voor je op, een **blauwe schelp** vliegt naar de koploper. Achteraan krijg je vaker de sterke items.
 
 ### Besturing
 

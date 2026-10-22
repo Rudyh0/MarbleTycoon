@@ -1,5 +1,7 @@
 // Afstandsbediening op de telefoon voor de multiplayer-race.
 
+import { ITEM_SVG, ITEM_NAAM } from './itemiconen.js';
+
 const SKINS = [
   ['kattenoog', 'Kattenoog', 'radial-gradient(circle at 35% 30%, #fff 0 8%, #bfeaf3 12%, #1f63d6 55%, #0b2f73)'],
   ['vuuroog', 'Vuuroog', 'radial-gradient(circle at 35% 30%, #fff 0 8%, #ffd0b0 12%, #e2361b 55%, #6d1608)'],
@@ -43,6 +45,10 @@ let wakeLock = null;
 let pogingen = 0;
 let mijnKleur = '#4fa3ff';
 let bewustWeg = false;
+let regels = { modus: 'race', rondes: 1, maxUit: 0, arcade: false };
+let mijnItem = null;
+let rolTimer = 0;
+let rem = false;
 
 // ------------------------------------------------------------------ schermen
 
@@ -122,17 +128,19 @@ function bericht(m) {
       if (!m.host) overlay('Wachten op het hostscherm…');
       break;
     case 'kleur':
+      if (m.regels) zetRegels(m.regels);
       mijnKleur = m.kleur;
       document.documentElement.style.setProperty('--mijn', m.kleur);
       if (m.fase === 'lobby' && fase !== 'lobby' && fase !== 'aanmelden') { toon('lobby'); zetKlaar(false); }
       break;
     case 'aftel':
-      if (fase !== 'race') { toon('race'); houdWakker(); zetGas(0); }
+      if (m.regels) zetRegels(m.regels);
+      if (fase !== 'race') { toon('race'); houdWakker(); zetGas(0); zetItem(null); $('weg').hidden = true; }
       aftel(String(m.n));
-      $('ronde').textContent = `Ronde 1/${m.rondes || 1}`;
       $('raceMelding').textContent = '';
       break;
     case 'go':
+      if (m.regels) zetRegels(m.regels);
       if (fase !== 'race') { toon('race'); houdWakker(); }
       aftel('GO!');
       tril([60, 40, 60]);
@@ -141,8 +149,12 @@ function bericht(m) {
       if (fase !== 'race') return;
       $('plek').textContent = m.plek;
       $('van').textContent = '/' + m.van;
-      $('ronde').textContent = `Ronde ${m.ronde}/${m.rondes}`;
-      $('snelheid').textContent = m.v;
+      $('ronde').textContent = m.rondes ? `Ronde ${m.ronde}/${m.rondes}` : `Ronde ${m.ronde}`;
+      $('levens').textContent = m.max ? (regels.modus === 'lms' ? '♥'.repeat(Math.max(0, m.max - m.keer)) + '♡'.repeat(Math.min(m.max, m.keer)) : `Uit de bocht: ${m.keer}/${m.max}`) : '';
+      $('snelheid').textContent = Math.abs(m.v);
+      $('achteruit').hidden = !(m.v < 0);
+      if (!m.rol && !rolTimer && (m.item || null) !== mijnItem) zetItem(m.item || null);
+      if (m.weg && $('weg').hidden) toonWeg();
       gevaar = m.uit ? 0 : m.g || 0;
       $('gevaar').style.width = Math.min(100, gevaar * 100) + '%';
       document.body.classList.toggle('spannend', gevaar > 0.75);
@@ -154,6 +166,28 @@ function bericht(m) {
       break;
     case 'terug':
       $('raceMelding').textContent = '';
+      break;
+    case 'itemRol':
+      rolItem(m.item);
+      break;
+    case 'item':
+      if (!rolTimer) zetItem(m.item || null);
+      break;
+    case 'geraakt': {
+      const t = { banaan: 'Bananenschil!', rood: 'Rode schelp!', blauw: 'Blauwe schelp!' }[m.door] || 'Geraakt!';
+      $('raceMelding').textContent = t;
+      flits('rood');
+      tril([120, 50, 260]);
+      break;
+    }
+    case 'uitgeschakeld':
+      toonWeg();
+      tril([400]);
+      break;
+    case 'gladder':
+      $('raceMelding').textContent = 'De baan wordt gladder!';
+      flits('oranje');
+      setTimeout(() => { if ($('raceMelding').textContent.startsWith('De baan')) $('raceMelding').textContent = ''; }, 2000);
       break;
     case 'ronde':
       $('raceMelding').textContent = 'Ronde ' + m.ronde + '!';
@@ -174,15 +208,20 @@ function bericht(m) {
       const ol = $('uitslagLijst');
       ol.replaceChildren(...m.lijst.map((r) => {
         const li = document.createElement('li');
-        li.textContent = `${r.naam} — ${r.tijd !== null ? Number(r.tijd).toFixed(2) + ' s' : 'niet gefinisht'}`;
+        const wat = r.tijd !== null ? Number(r.tijd).toFixed(2) + ' s' : m.modus === 'lms' ? (r.plek === 1 ? 'winnaar!' : `eruit in ronde ${r.ronde}`) : r.weg ? 'uitgeschakeld' : 'niet gefinisht';
+        li.textContent = `${r.naam} — ${wat}`;
         return li;
       }));
+      if (m.modus === 'lms' && fase === 'uitslag' && m.lijst[0]) $('uitslagTitel').textContent = m.lijst[0].naam === naam ? 'Jij wint!' : `${m.lijst[0].naam} wint!`;
       break;
     }
     case 'lobby':
       toon('lobby');
       zetKlaar(!!m.klaar);
       zetGas(0);
+      zetRem(false);
+      zetItem(null);
+      $('weg').hidden = true;
       break;
     case 'host_weg':
       overlay('Het hostscherm is even weg. Wachten…');
@@ -214,6 +253,67 @@ function bericht(m) {
     default:
   }
 }
+
+// ------------------------------------------------------------------ regels, items en remmen
+
+function zetRegels(r) {
+  regels = { ...regels, ...r };
+  $('itemKnop').hidden = !regels.arcade;
+  const delen = [];
+  if (regels.modus === 'lms') delen.push(`Last man standing: blijf het langst op de baan. Je hebt ${regels.maxUit} ${regels.maxUit === 1 ? 'leven' : 'levens'}.`);
+  else {
+    delen.push(`Race over ${regels.rondes === 1 ? '1 ronde' : regels.rondes + ' rondes'}.`);
+    if (regels.maxUit) delen.push(`Na ${regels.maxUit}× uit de bocht lig je eruit.`);
+  }
+  if (regels.arcade) delen.push('Rij door de ?-dozen voor een power-up en druk op de itemknop om hem te gebruiken.');
+  $('regelTekst').textContent = delen.join(' ');
+}
+
+function zetItem(item) {
+  mijnItem = item;
+  const k = $('itemKnop');
+  k.classList.toggle('vol', !!item);
+  k.classList.toggle('leeg', !item);
+  k.classList.remove('rolt');
+  $('itemIcoon').innerHTML = item ? ITEM_SVG[item] : '';
+  $('itemNaam').textContent = item ? ITEM_NAAM[item] : 'Geen item';
+}
+
+function rolItem(eind) {
+  clearInterval(rolTimer);
+  const lijst = Object.keys(ITEM_SVG);
+  let i = 0;
+  const k = $('itemKnop');
+  k.classList.add('rolt');
+  $('itemNaam').textContent = '…';
+  rolTimer = setInterval(() => { $('itemIcoon').innerHTML = ITEM_SVG[lijst[i++ % lijst.length]]; }, 90);
+  setTimeout(() => { clearInterval(rolTimer); rolTimer = 0; zetItem(eind); tril(40); }, 1300);
+}
+
+function toonWeg() {
+  $('weg').hidden = false;
+  zetGas(0);
+  zetRem(false);
+  clearInterval(rolTimer); rolTimer = 0;
+  zetItem(null);
+}
+
+function zetRem(aan) {
+  if (rem === aan) return;
+  rem = aan;
+  $('remKnop').classList.toggle('vast', aan);
+  stuur({ t: 'rem', aan });
+}
+
+const remKnop = $('remKnop');
+remKnop.addEventListener('pointerdown', (e) => { e.preventDefault(); remKnop.setPointerCapture(e.pointerId); zetRem(true); tril(15); });
+for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) remKnop.addEventListener(ev, () => zetRem(false));
+$('itemKnop').addEventListener('click', () => {
+  if (!mijnItem || rolTimer) return;
+  stuur({ t: 'gebruik' });
+  tril(35);
+  zetItem(null);
+});
 
 // ------------------------------------------------------------------ klaar en aftellen
 
@@ -277,8 +377,17 @@ hendel.addEventListener('pointerup', los);
 hendel.addEventListener('pointercancel', los);
 hendel.addEventListener('lostpointercapture', los);
 // toetsenbord (handig om te testen op een computer)
-window.addEventListener('keydown', (e) => { if (fase === 'race' && (e.key === 'ArrowUp' || e.key === ' ')) { e.preventDefault(); zetGas(1); } });
-window.addEventListener('keyup', (e) => { if (fase === 'race' && (e.key === 'ArrowUp' || e.key === ' ')) zetGas(0); });
+window.addEventListener('keydown', (e) => {
+  if (fase !== 'race' || e.repeat) return;
+  if (e.key === 'ArrowUp' || e.key === ' ') { e.preventDefault(); zetGas(1); }
+  if (e.key === 'ArrowDown') { e.preventDefault(); zetRem(true); }
+  if (e.key === 'Enter' || e.key.toLowerCase() === 'e') $('itemKnop').click();
+});
+window.addEventListener('keyup', (e) => {
+  if (fase !== 'race') return;
+  if (e.key === 'ArrowUp' || e.key === ' ') zetGas(0);
+  if (e.key === 'ArrowDown') zetRem(false);
+});
 setInterval(() => verstuurGas(false), 60);
 
 // ------------------------------------------------------------------ trillen
